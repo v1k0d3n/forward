@@ -16,7 +16,7 @@ import (
 )
 
 func TestForward(t *testing.T) {
-	config := "forward . %s {\nhealth_check 5ms\n}"
+	config := "forward . %s %s {\nhealth_check 5ms\n}"
 	var counter int64
 
 	backend := dnstest.NewServer(dns.HandlerFunc(func(w dns.ResponseWriter, r *dns.Msg) {
@@ -25,7 +25,13 @@ func TestForward(t *testing.T) {
 	}))
 	defer backend.Close()
 
-	c := caddy.NewTestController("test", fmt.Sprintf(config, backend.Addr))
+	backend2 := dnstest.NewServer(dns.HandlerFunc(func(w dns.ResponseWriter, r *dns.Msg) {
+		atomic.AddInt64(&counter, 1)
+		w.WriteMsg(r) // echo back
+	}))
+	defer backend2.Close()
+
+	c := caddy.NewTestController("test", fmt.Sprintf(config, backend.Addr, backend2.Addr))
 
 	f, err := parseForward(c)
 	if err != nil {
