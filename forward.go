@@ -44,10 +44,12 @@ func (f Forward) ServeDNS(ctx context.Context, w dns.ResponseWriter, r *dns.Msg)
 
 	for _, proxy := range f.selectp(w) {
 		if !proxy.host.down(f.maxfails) {
-			proxy.clientChan <- state
+			proxy.clientc <- state
 
-			RequestCount.WithLabelValues(state.Proto(), familyToString(state.Family()), proxy.host.String()).Add(1)
-			SocketGauge.WithLabelValues(proxy.host.String()).Set(float64(proxy.Len()))
+			err := <-proxy.errc
+			if err != nil {
+				continue
+			}
 
 			return 0, nil
 		}
