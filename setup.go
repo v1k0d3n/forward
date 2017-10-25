@@ -85,7 +85,7 @@ func parseForward(c *caddy.Controller) (Forward, error) {
 			return f, err
 		}
 		for _, h := range toHosts {
-			p := newProxy(h)
+			p := newProxy(h, f.maxfails)
 			f.proxies = append(f.proxies, p)
 
 		}
