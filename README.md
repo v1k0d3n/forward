@@ -99,7 +99,3 @@ Forward to a IPv6 host:
     forward . [::1]:1053
 }
 ~~~
-
-## Bugs
-
-Tracing and dnstap is not supported (yet) for this proxy.

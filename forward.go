@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/coredns/coredns/plugin"
+	"github.com/coredns/coredns/plugin/dnstap"
 	"github.com/coredns/coredns/request"
 
 	"github.com/miekg/dns"
@@ -42,16 +43,23 @@ func (f Forward) ServeDNS(ctx context.Context, w dns.ResponseWriter, r *dns.Msg)
 		return plugin.NextOrFailure(f.Name(), f.Next, ctx, w, r)
 	}
 
+	start := time.Now()
 	for _, proxy := range f.selectp(w) {
 		if !proxy.host.down(f.maxfails) {
 			proxy.clientc <- state
 
-			err := <-proxy.errc
-			if err != nil {
+			e := <-proxy.errc
+			if e.err != nil {
 				continue
 			}
 
-			return 0, nil
+			proto := state.Proto()
+			if f.forceTCP {
+				proto = "tcp"
+			}
+			taperr := dnstap.ToDnstap(ctx, proxy.host.String(), proto, state, e.rep, start)
+
+			return 0, taperr
 		}
 	}
 

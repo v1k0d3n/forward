@@ -40,6 +40,11 @@ type conn struct {
 	used time.Time
 }
 
+type Error struct {
+	err error
+	rep *dns.Msg
+}
+
 type proxy struct {
 	host        *host
 	connTimeout time.Duration
@@ -47,8 +52,8 @@ type proxy struct {
 	sync.RWMutex
 
 	clientc   chan request.Request
-	errc      chan error
 	upstreamc chan request.Request
+	errc      chan Error
 
 	// copied from Forward.
 	hcInterval time.Duration
@@ -64,7 +69,7 @@ func newProxy(addr string, maxfails uint32) *proxy {
 		connTimeout: connTimeout,
 		cl:          false,
 		conns:       make(map[string]conn),
-		errc:        make(chan error),
+		errc:        make(chan Error),
 		clientc:     make(chan request.Request),
 		upstreamc:   make(chan request.Request),
 		hcInterval:  hcDuration,
@@ -108,8 +113,10 @@ func (p *proxy) clientRead(upstreamConn *dns.Conn, w dns.ResponseWriter) {
 			upstreamConn.Close()
 			delete(p.conns, clientID)
 			p.Unlock()
+			p.errc <- Error{err, nil}
 			return
 		}
+		p.errc <- Error{err, ret}
 
 		p.setUsed(clientID)
 		state := request.Request{Req: ret, W: w}
@@ -145,7 +152,7 @@ func (p *proxy) clientPackets() {
 			}
 			c, err := dns.DialTimeout(proto, p.host.addr, dialTimeout)
 			if err != nil {
-				p.errc <- err
+				p.errc <- Error{err, nil}
 				continue
 			}
 
@@ -157,14 +164,12 @@ func (p *proxy) clientPackets() {
 			}
 			p.Unlock()
 
-			p.errc <- nil
 			c.WriteMsg(pa.Req)
 
 			go p.clientRead(c, pa.W)
 			continue
 		}
 
-		p.errc <- nil
 		c.c.WriteMsg(pa.Req)
 
 		p.RLock()
