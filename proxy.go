@@ -160,7 +160,6 @@ func (p *proxy) clientPackets() {
 			p.errc <- nil
 			c.WriteMsg(pa.Req)
 
-			// TODO: extend error handling into ClientRead, meaning we can remove the p.errc <- nil from here
 			go p.clientRead(c, pa.W)
 			continue
 		}
