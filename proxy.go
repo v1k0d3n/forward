@@ -20,7 +20,7 @@
  * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-/* General idea kept, but completely rewritten for use in CoreDNS */
+/* General idea kept, but completely rewritten for use in CoreDNS - Miek Gieben 2017 */
 
 package forward
 
@@ -45,8 +45,10 @@ type proxy struct {
 	connTimeout time.Duration
 	conns       map[string]conn
 	sync.RWMutex
-	clientChan   chan request.Request
-	upstreamChan chan request.Request
+
+	clientc   chan request.Request
+	errc      chan error
+	upstreamc chan request.Request
 
 	// copied from Forward.
 	hcInterval time.Duration
@@ -58,13 +60,14 @@ type proxy struct {
 
 func newProxy(addr string) *proxy {
 	proxy := &proxy{
-		host:         newHost(addr),
-		connTimeout:  connTimeout,
-		cl:           false,
-		conns:        make(map[string]conn),
-		clientChan:   make(chan request.Request),
-		upstreamChan: make(chan request.Request),
-		hcInterval:   hcDuration,
+		host:        newHost(addr),
+		connTimeout: connTimeout,
+		cl:          false,
+		conns:       make(map[string]conn),
+		errc:        make(chan error),
+		clientc:     make(chan request.Request),
+		upstreamc:   make(chan request.Request),
+		hcInterval:  hcDuration,
 	}
 
 	return proxy
@@ -110,20 +113,26 @@ func (p *proxy) clientRead(upstreamConn *dns.Conn, w dns.ResponseWriter) {
 
 		p.setUsed(clientID)
 		state := request.Request{Req: ret, W: w}
-		p.upstreamChan <- state
+		p.upstreamc <- state
 
-		RequestDuration.WithLabelValues(state.Proto(), familyToString(state.Family()), p.host.String()).Observe(float64(time.Since(start) / time.Millisecond))
+		ps := p.host.String()
+		fa := familyToString(state.Family())
+		pr := state.Proto()
+
+		RequestCount.WithLabelValues(pr, fa, ps).Add(1)
+		RequestDuration.WithLabelValues(pr, fa, ps).Observe(float64(time.Since(start) / time.Millisecond))
+		SocketGauge.WithLabelValues(ps).Set(float64(p.Len()))
 	}
 }
 
 func (p *proxy) upstreamPackets() {
-	for pa := range p.upstreamChan {
+	for pa := range p.upstreamc {
 		pa.W.WriteMsg(pa.Req)
 	}
 }
 
 func (p *proxy) clientPackets() {
-	for pa := range p.clientChan {
+	for pa := range p.clientc {
 		clientID, proto := clientID(pa.W)
 
 		p.RLock()
@@ -136,7 +145,7 @@ func (p *proxy) clientPackets() {
 			}
 			c, err := dns.DialTimeout(proto, p.host.addr, dialTimeout)
 			if err != nil {
-				// try another nameserver?
+				p.errc <- err
 				continue
 			}
 
@@ -148,12 +157,15 @@ func (p *proxy) clientPackets() {
 			}
 			p.Unlock()
 
+			p.errc <- nil
 			c.WriteMsg(pa.Req)
 
+			// TODO: extend error handling into ClientRead, meaning we can remove the p.errc <- nil from here
 			go p.clientRead(c, pa.W)
 			continue
 		}
 
+		p.errc <- nil
 		c.c.WriteMsg(pa.Req)
 
 		p.RLock()
