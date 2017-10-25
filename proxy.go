@@ -58,9 +58,9 @@ type proxy struct {
 	clMu sync.RWMutex
 }
 
-func newProxy(addr string) *proxy {
+func newProxy(addr string, maxfails uint32) *proxy {
 	proxy := &proxy{
-		host:        newHost(addr),
+		host:        newHost(addr, maxfails),
 		connTimeout: connTimeout,
 		cl:          false,
 		conns:       make(map[string]conn),
@@ -195,9 +195,8 @@ func (p *proxy) free() {
 
 func (p *proxy) healthCheck() {
 	for !p.closed() {
-		time.Sleep(p.hcInterval)
-
 		go p.host.Check()
+		time.Sleep(p.hcInterval)
 	}
 }
 

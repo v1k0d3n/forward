@@ -10,6 +10,10 @@ type host struct {
 	checking bool
 }
 
-func newHost(addr string) *host { return &host{addr: addr} }
+// newHost returns a new host, the fails are set to maxfails+1, i.e.
+// the first healthcheck must succeed before we use this host.
+func newHost(addr string, maxfails uint32) *host {
+	return &host{addr: addr, fails: maxfails + 1}
+}
 
 func (h *host) String() string { return h.addr }
