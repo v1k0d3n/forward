@@ -112,7 +112,6 @@ func (f Forward) selectp(w dns.ResponseWriter) []*proxy {
 			put = p
 		}
 
-		println(i, p)
 		rnd[i] = f.proxies[p]
 	}
 	// put known first, if we have one
