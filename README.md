@@ -18,7 +18,7 @@ forward FROM TO...
 
 By default health checks are done every 0.5s. After two failed checks the upstream is
 considered unhealthy. The health checks use a non-recursive DNS query (`. IN NS`) to get upstream
-health. Any reponse that is not an error is taken as a healthy upstream. Multi upstreams are
+health. Any reponse that is not an error is taken as a healthy upstream. Multiple upstreams are
 randomized on first use. When a healthy proxy returns an error duing the exchange the next upstream
 in the list is tried.
 
