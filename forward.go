@@ -45,22 +45,23 @@ func (f Forward) ServeDNS(ctx context.Context, w dns.ResponseWriter, r *dns.Msg)
 
 	start := time.Now()
 	for _, proxy := range f.selectp(w) {
-		if !proxy.host.down(f.maxfails) {
-			proxy.clientc <- state
-
-			e := <-proxy.errc
-			if e.err != nil {
-				continue
-			}
-
-			proto := state.Proto()
-			if f.forceTCP {
-				proto = "tcp"
-			}
-			taperr := dnstap.ToMessage(ctx, proxy.host.String(), proto, state, e.rep, start)
-
-			return 0, taperr
+		if proxy.host.down(f.maxfails) {
+			continue
 		}
+		proxy.clientc <- state
+
+		e := <-proxy.errc
+		if e.err != nil {
+			continue
+		}
+
+		proto := state.Proto()
+		if f.forceTCP {
+			proto = "tcp"
+		}
+		taperr := dnstap.ToMessage(ctx, proxy.host.String(), proto, state, e.rep, start)
+
+		return 0, taperr
 	}
 
 	return dns.RcodeServerFailure, errNoHealthy
