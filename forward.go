@@ -10,7 +10,6 @@ import (
 	"time"
 
 	"github.com/coredns/coredns/plugin"
-	"github.com/coredns/coredns/plugin/dnstap"
 	"github.com/coredns/coredns/request"
 
 	"github.com/miekg/dns"
@@ -59,9 +58,9 @@ func (f Forward) ServeDNS(ctx context.Context, w dns.ResponseWriter, r *dns.Msg)
 		if f.forceTCP {
 			proto = "tcp"
 		}
-		taperr := dnstap.ToMessage(ctx, proxy.host.String(), proto, state, e.rep, start)
+		// taperr := dnstap.ToMessage(ctx, proxy.host.String(), proto, state, e.rep, start)
 
-		return 0, taperr
+		return 0, nil
 	}
 
 	return dns.RcodeServerFailure, errNoHealthy
