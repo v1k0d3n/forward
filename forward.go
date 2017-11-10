@@ -54,14 +54,6 @@ func (f Forward) ServeDNS(ctx context.Context, w dns.ResponseWriter, r *dns.Msg)
 			continue
 		}
 
-		/*
-			proto := state.Proto()
-			if f.forceTCP {
-				proto = "tcp"
-			}
-			 taperr := dnstap.ToMessage(ctx, proxy.host.String(), proto, state, e.rep, start)
-		*/
-
 		return 0, nil
 	}
 
