@@ -45,7 +45,7 @@ forward FROM TO... {
 
 If monitoring is enabled (via the *prometheus* directive) then the following metric are exported:
 
-* `coredns_forward_request_duration_millisecond{proto, family, to}` - duration per upstream
+* `coredns_forward_request_duration_seconds{proto, family, to}` - duration per upstream
   interaction.
 * `coredns_forward_request_count_total{proto, family, to}` - query count per upstream.
 * `coredns_forward_socket_count_total{to}` - number of open sockets per upstream.
