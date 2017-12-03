@@ -41,6 +41,10 @@ forward FROM TO... {
 * `max_fails` is the number of subsequent failed health checks that are needed before considering
   a backend to be down. If 0, the backend will never be marked as down. Default is 2.
 
+Note there is no `policy`, as everything defaults to round robin. If the socket for this client
+isn't known *forward* will randomly choose one. If this turns out to be unhealthty, the next one is
+tried.
+
 ## Metrics
 
 If monitoring is enabled (via the *prometheus* directive) then the following metric are exported:
