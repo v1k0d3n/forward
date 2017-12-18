@@ -27,8 +27,14 @@ var (
 		Subsystem: "forward",
 		Name:      "request_duration_seconds",
 		Buckets:   plugin.TimeBuckets,
-		Help:      "Histogram of the time (in milliseconds) each request took.",
+		Help:      "Histogram of the time each request took.",
 	}, []string{"proto", "family", "to"})
+	HealthcheckFailureCount = prometheus.NewCounterVec(prometheus.CounterOpts{
+		Namespace: plugin.Namespace,
+		Subsystem: "forward",
+		Name:      "healthcheck_failure_count_total",
+		Help:      "Counter of the number of failed healtchecks.",
+	}, []string{"to"})
 )
 
 // OnStartupMetrics sets up the metrics on startup.
@@ -37,6 +43,7 @@ func OnStartupMetrics() error {
 		prometheus.MustRegister(RequestCount)
 		prometheus.MustRegister(SocketGauge)
 		prometheus.MustRegister(RequestDuration)
+		prometheus.MustRegister(HealthcheckFailureCount)
 	})
 	return nil
 }

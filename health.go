@@ -1,8 +1,8 @@
 package forward
 
 import (
+	"log"
 	"sync/atomic"
-	"time"
 
 	"github.com/miekg/dns"
 )
@@ -23,6 +23,9 @@ func (h *host) Check() {
 
 	err := h.send()
 	if err != nil {
+		log.Printf("[INFO] healtheck of %s failed with %s", h.addr, err)
+		HealthcheckFailureCount.WithLabelValues(h.String()).Add(1)
+
 		atomic.AddUint32(&h.fails, 1)
 	} else {
 		atomic.StoreUint32(&h.fails, 0)
@@ -38,9 +41,11 @@ func (h *host) Check() {
 func (h *host) send() error {
 	hcping := new(dns.Msg)
 	hcping.SetQuestion(".", dns.TypeNS)
+	// RecursionDesired is set to true because 9.9.9.9 replies with REFUSED and no
+	// question section, which triggers an error.
 	hcping.RecursionDesired = true
 
-	_, _, err := hcclient.Exchange(hcping, h.addr)
+	_, _, err := h.client.Exchange(hcping, h.addr)
 	return err
 }
 
@@ -52,11 +57,3 @@ func (h *host) down(maxfails uint32) bool {
 	fails := atomic.LoadUint32(&h.fails)
 	return fails > maxfails
 }
-
-var hcclient = func() *dns.Client {
-	c := new(dns.Client)
-	c.Net = "tcp"
-	c.ReadTimeout = 2 * time.Second
-	c.WriteTimeout = 2 * time.Second
-	return c
-}()

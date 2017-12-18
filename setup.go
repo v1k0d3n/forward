@@ -1,12 +1,15 @@
 package forward
 
 import (
+	"crypto/tls"
+	"net"
 	"strconv"
 	"time"
 
 	"github.com/coredns/coredns/core/dnsserver"
 	"github.com/coredns/coredns/plugin"
 	"github.com/coredns/coredns/plugin/pkg/dnsutil"
+	pkgtls "github.com/coredns/coredns/plugin/pkg/tls"
 
 	"github.com/mholt/caddy"
 )
@@ -69,7 +72,8 @@ func (f *Forward) OnShutdown() error {
 }
 
 func parseForward(c *caddy.Controller) (Forward, error) {
-	f := Forward{maxfails: 2}
+	f := Forward{maxfails: 2, tlsConfig: new(tls.Config)}
+
 	for c.Next() {
 		if !c.Args(&f.from) {
 			return f, c.ArgErr()
@@ -80,12 +84,35 @@ func parseForward(c *caddy.Controller) (Forward, error) {
 		if len(to) == 0 {
 			return f, c.ArgErr()
 		}
+		// A bit fiddly, but first check if we've go transports and if so add them back in when we create the proxies.
+		trans := make([]int, len(to))
+		for i := range to {
+			trans[i], to[i] = transport(to[i])
+		}
+
 		toHosts, err := dnsutil.ParseHostPortOrFile(to...)
 		if err != nil {
 			return f, err
 		}
-		for _, h := range toHosts {
-			p := newProxy(h)
+
+		for i, h := range toHosts {
+			// Double check the port, if e.g. is 53 and the transport is TLS make it 853.
+			// This can be somewhat annoying because you *can't* have TLS on port 53 then.
+			switch trans[i] {
+			case TransportTLS:
+				h1, p, err := net.SplitHostPort(h)
+				if err != nil {
+					break
+				}
+
+				if p == "53" {
+					h = net.JoinHostPort(h1, "853")
+				}
+			}
+
+			// We can't set tlsConfig here, because we haven't parsed it yet.
+			// We set it below at the end of parseBlock.
+			p := newProxy(h, trans[i])
 			f.proxies = append(f.proxies, p)
 
 		}
@@ -95,6 +122,12 @@ func parseForward(c *caddy.Controller) (Forward, error) {
 				return f, err
 			}
 		}
+	}
+	if f.tlsName != "" {
+		f.tlsConfig.ServerName = f.tlsName
+	}
+	for i := range f.proxies {
+		f.proxies[i].SetTLSConfig(f.tlsConfig)
 	}
 	return f, nil
 }
@@ -138,8 +171,25 @@ func parseBlock(c *caddy.Controller, f *Forward) error {
 		for i := range f.proxies {
 			f.proxies[i].forceTCP = true
 		}
+	case "tls":
+		args := c.RemainingArgs()
+		if len(args) != 3 {
+			return c.ArgErr()
+		}
+
+		tlsConfig, err := pkgtls.NewTLSConfig(args[0], args[1], args[2])
+		if err != nil {
+			return err
+		}
+		f.tlsConfig = tlsConfig
+	case "tls_name":
+		if !c.NextArg() {
+			return c.ArgErr()
+		}
+		f.tlsName = c.Val()
 	default:
 		return c.Errf("unknown property '%s'", c.Val())
 	}
+
 	return nil
 }

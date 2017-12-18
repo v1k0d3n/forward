@@ -5,6 +5,7 @@
 package forward
 
 import (
+	"crypto/tls"
 	"errors"
 	"math/rand"
 	"time"
@@ -21,10 +22,14 @@ import (
 type Forward struct {
 	proxies []*proxy
 
-	from       string
-	ignored    []string
-	forceTCP   bool          // here for testing
-	hcInterval time.Duration // here for testing
+	from    string
+	ignored []string
+
+	forceTCP   bool          // also here for testing
+	hcInterval time.Duration // also here for testing
+
+	tlsConfig *tls.Config
+	tlsName   string
 
 	maxfails uint32
 
@@ -42,14 +47,13 @@ func (f Forward) ServeDNS(ctx context.Context, w dns.ResponseWriter, r *dns.Msg)
 		return plugin.NextOrFailure(f.Name(), f.Next, ctx, w, r)
 	}
 
-	//	start := time.Now()
 	for _, proxy := range f.selectp(w) {
 		if proxy.host.down(f.maxfails) {
 			continue
 		}
-		proxy.clientc <- state
+		proxy.client <- state
 
-		e := <-proxy.errc
+		e := <-proxy.err
 		if e.err != nil {
 			continue
 		}

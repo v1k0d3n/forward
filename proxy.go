@@ -25,6 +25,8 @@
 package forward
 
 import (
+	"crypto/tls"
+	"fmt"
 	"net"
 	"sync"
 	"time"
@@ -40,9 +42,18 @@ type conn struct {
 	used time.Time
 }
 
-type Error struct {
+// Err signals an error occured.
+type Err struct {
 	err error
 	rep *dns.Msg
+}
+
+func (e Err) Error() string {
+	if e.rep != nil && len(e.rep.Question) == 1 {
+		return fmt.Sprintf("forward: %s, for query %s with type %d", e.err, e.rep.Question[0].Name, e.rep.Question[0].Qtype)
+	}
+
+	return fmt.Sprintf("forward: %s, for query", e.err)
 }
 
 type proxy struct {
@@ -51,9 +62,11 @@ type proxy struct {
 	conns       map[string]conn
 	sync.RWMutex
 
-	clientc   chan request.Request
-	upstreamc chan request.Request
-	errc      chan Error
+	client   chan request.Request
+	upstream chan request.Request
+	err      chan Err
+
+	transport int // transport to use dns, tls or grpc (grpc not implemented yet)
 
 	// copied from Forward.
 	hcInterval time.Duration
@@ -64,19 +77,22 @@ type proxy struct {
 }
 
 func newProxy(addr string) *proxy {
-	proxy := &proxy{
-		host:        newHost(addr),
+	return &proxy{
+		host:        newHost(addr, transport),
+		transport:   transport,
 		connTimeout: connTimeout,
 		cl:          false,
 		conns:       make(map[string]conn),
-		errc:        make(chan Error),
-		clientc:     make(chan request.Request),
-		upstreamc:   make(chan request.Request),
 		hcInterval:  hcDuration,
-	}
 
-	return proxy
+		err:      make(chan Err),
+		client:   make(chan request.Request),
+		upstream: make(chan request.Request),
+	}
 }
+
+// SetTLSConfig sets the TLS config lower p.host.
+func (p *proxy) SetTLSConfig(cfg *tls.Config) { p.host.SetTLSConfig(cfg) }
 
 func (p *proxy) closed() bool {
 	p.clMu.RLock()
@@ -113,33 +129,33 @@ func (p *proxy) clientRead(upstreamConn *dns.Conn, w dns.ResponseWriter) {
 			upstreamConn.Close()
 			delete(p.conns, clientID)
 			p.Unlock()
-			p.errc <- Error{err, nil}
+			p.err <- Err{err, nil}
 			return
 		}
-		p.errc <- Error{err, ret}
+		p.err <- Err{err, ret}
 
 		p.setUsed(clientID)
 		state := request.Request{Req: ret, W: w}
-		p.upstreamc <- state
+		p.upstream <- state
 
 		ps := p.host.String()
 		fa := familyToString(state.Family())
 		pr := state.Proto()
 
 		RequestCount.WithLabelValues(pr, fa, ps).Add(1)
-		RequestDuration.WithLabelValues(pr, fa, ps).Observe(float64(time.Since(start) / time.Millisecond))
+		RequestDuration.WithLabelValues(pr, fa, ps).Observe(time.Since(start).Seconds())
 		SocketGauge.WithLabelValues(ps).Set(float64(p.Len()))
 	}
 }
 
 func (p *proxy) upstreamPackets() {
-	for pa := range p.upstreamc {
+	for pa := range p.upstream {
 		pa.W.WriteMsg(pa.Req)
 	}
 }
 
 func (p *proxy) clientPackets() {
-	for pa := range p.clientc {
+	for pa := range p.client {
 		clientID, proto := clientID(pa.W)
 
 		p.RLock()
@@ -150,10 +166,22 @@ func (p *proxy) clientPackets() {
 			if p.forceTCP {
 				proto = "tcp"
 			}
-			c, err := dns.DialTimeout(proto, p.host.addr, dialTimeout)
-			if err != nil {
-				p.errc <- Error{err, nil}
-				continue
+
+			var (
+				c   *dns.Conn
+				err error
+			)
+			switch p.transport {
+			case TransportDNS:
+				if c, err = dns.DialTimeout(proto, p.host.addr, dialTimeout); err != nil {
+					p.err <- Err{err, nil}
+					continue
+				}
+			case TransportTLS:
+				if c, err = dns.DialTimeoutWithTLS("tcp", p.host.addr, p.host.tlsConfig, dialTimeout); err != nil {
+					p.err <- Err{err, nil}
+					continue
+				}
 			}
 
 			p.Lock()
@@ -198,6 +226,9 @@ func (p *proxy) free() {
 }
 
 func (p *proxy) healthCheck() {
+
+	p.host.SetClient()
+
 	for !p.closed() {
 		go p.host.Check()
 		time.Sleep(p.hcInterval)
