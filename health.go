@@ -38,7 +38,7 @@ func (h *host) Check() {
 func (h *host) send() error {
 	hcping := new(dns.Msg)
 	hcping.SetQuestion(".", dns.TypeNS)
-	hcping.RecursionDesired = false
+	hcping.RecursionDesired = true
 
 	_, _, err := hcclient.Exchange(hcping, h.addr)
 	return err

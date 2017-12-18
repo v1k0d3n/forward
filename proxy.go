@@ -63,9 +63,9 @@ type proxy struct {
 	clMu sync.RWMutex
 }
 
-func newProxy(addr string, maxfails uint32) *proxy {
+func newProxy(addr string) *proxy {
 	proxy := &proxy{
-		host:        newHost(addr, maxfails),
+		host:        newHost(addr),
 		connTimeout: connTimeout,
 		cl:          false,
 		conns:       make(map[string]conn),
