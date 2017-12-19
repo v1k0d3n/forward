@@ -16,12 +16,6 @@ var (
 		Name:      "request_count_total",
 		Help:      "Counter of requests made per protocol, family and upstream.",
 	}, []string{"proto", "family", "to"})
-	SocketGauge = prometheus.NewGaugeVec(prometheus.GaugeOpts{
-		Namespace: plugin.Namespace,
-		Subsystem: "forward",
-		Name:      "socket_count_total",
-		Help:      "Guage of open socket per upstream.",
-	}, []string{"to"})
 	RequestDuration = prometheus.NewHistogramVec(prometheus.HistogramOpts{
 		Namespace: plugin.Namespace,
 		Subsystem: "forward",
@@ -41,7 +35,6 @@ var (
 func OnStartupMetrics() error {
 	metricsOnce.Do(func() {
 		prometheus.MustRegister(RequestCount)
-		prometheus.MustRegister(SocketGauge)
 		prometheus.MustRegister(RequestDuration)
 		prometheus.MustRegister(HealthcheckFailureCount)
 	})

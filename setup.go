@@ -46,12 +46,6 @@ func setup(c *caddy.Controller) error {
 // OnStartup starts a goroutines for all proxies.
 func (f *Forward) OnStartup() (err error) {
 	for _, p := range f.proxies {
-		if p.connTimeout.Nanoseconds() > 0 {
-			go p.free()
-		}
-
-		go p.upstreamPackets()
-		go p.clientPackets()
 		go p.healthCheck()
 	}
 	return nil
@@ -60,13 +54,7 @@ func (f *Forward) OnStartup() (err error) {
 // OnShutdown stops all configures proxies.
 func (f *Forward) OnShutdown() error {
 	for _, p := range f.proxies {
-		p.setClosed(true)
-
-		p.Lock()
-		for _, conn := range p.conns {
-			conn.c.Close()
-		}
-		p.Unlock()
+		p.SetClosed(true)
 	}
 	return nil
 }

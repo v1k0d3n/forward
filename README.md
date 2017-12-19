@@ -2,9 +2,8 @@
 
 *forward* facilitates proxying DNS messages to upstream resolvers.
 
-The *forward* plugin is generally faster (~30%) than *proxy* as it re-uses already openened sockets
-to the upstreams. It supports UDP, TCP and DNS-over-TLS and uses inband healthchecking that is
-enabled by default.
+The *forward* plugin is similar to the *proxy* plugin, but simpler in setup. It supports UDP, TCP
+and DNS-over-TLS and uses inband healthchecking that is enabled by default.
 
 ## Syntax
 
@@ -64,7 +63,6 @@ If monitoring is enabled (via the *prometheus* directive) then the following met
 
 * `coredns_forward_request_duration_seconds{proto, family, to}` - duration per upstream interaction.
 * `coredns_forward_request_count_total{proto, family, to}` - query count per upstream.
-* `coredns_forward_socket_count_total{to}` - number of open sockets per upstream.
 * `coredns_forward_healthcheck_failure_count_total{to}` - number of failed healthchecks per upstream.
 
 Where `to` is one of the upstream servers (**TO** from the config), `proto` is the protocol used by
@@ -117,7 +115,8 @@ Forward to a IPv6 host:
 }
 ~~~
 
-Proxy all requests to 9.9.9.9 using the DNS-over-TLS protocol:
+Proxy all requests to 9.9.9.9 using the DNS-over-TLS protocol, and cache every answer for up to 30
+seconds.
 
 ~~~ corefile
 . {
@@ -125,5 +124,6 @@ Proxy all requests to 9.9.9.9 using the DNS-over-TLS protocol:
        tls_name dns.quad9.net
        health_check 5s
     }
+    cache 30
 }
 ~~~

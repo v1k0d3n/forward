@@ -34,7 +34,7 @@ func (h *host) String() string { return h.addr }
 // setClient sets and configures the dns.Client in host.
 func (h *host) SetClient() {
 	c := new(dns.Client)
-	c.Net = "tcp"
+	c.Net = "udp"
 	c.ReadTimeout = 2 * time.Second
 	c.WriteTimeout = 2 * time.Second
 
