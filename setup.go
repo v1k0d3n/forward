@@ -54,7 +54,7 @@ func (f *Forward) OnStartup() (err error) {
 // OnShutdown stops all configures proxies.
 func (f *Forward) OnShutdown() error {
 	for _, p := range f.proxies {
-		p.Close()
+		p.close()
 	}
 	return nil
 }

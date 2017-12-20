@@ -72,7 +72,7 @@ Wait:
 			}
 
 			t.conns[proto] = t.conns[proto][i:]
-			+SocketGauge.WithLabelValues(t.host.String()).Set(float64(t.Len()))
+			SocketGauge.WithLabelValues(t.host.String()).Set(float64(t.Len()))
 
 			go func() {
 				if proto != "tcp-tls" {

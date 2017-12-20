@@ -27,7 +27,6 @@ func newProxy(addr string) *proxy {
 
 	p := &proxy{
 		host:       host,
-		closed:     false,
 		hcInterval: hcDuration,
 		stop:       make(chan bool),
 		Transport:  NewTransport(host),
@@ -38,7 +37,7 @@ func newProxy(addr string) *proxy {
 // SetTLSConfig sets the TLS config lower p.host.
 func (p *proxy) SetTLSConfig(cfg *tls.Config) { p.host.SetTLSConfig(cfg) }
 
-func (p *proxy) Close(b bool) { p.stop <- true }
+func (p *proxy) close() { p.stop <- true }
 
 // Connect connect to the host in p with the configured transport.
 func (p *proxy) Dial(proto string) (*dns.Conn, error) { return p.Transport.Dial(proto) }
@@ -58,9 +57,9 @@ func (p *proxy) healthCheck() {
 	tick := time.NewTicker(p.hcInterval)
 	for {
 		select {
-		case <-tick:
+		case <-tick.C:
 			p.host.Check()
-		case <-stop:
+		case <-p.stop:
 			return
 		}
 	}
