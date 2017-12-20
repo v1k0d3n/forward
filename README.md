@@ -2,8 +2,9 @@
 
 *forward* facilitates proxying DNS messages to upstream resolvers.
 
-The *forward* plugin is similar to the *proxy* plugin, but simpler in setup. It supports UDP, TCP
-and DNS-over-TLS and uses inband healthchecking that is enabled by default.
+The *forward* plugin is generally faster (~30%) than *proxy* as it re-uses already openened sockets
+to the upstreams. It supports UDP, TCP and DNS-over-TLS and uses inband healthchecking that is
+enabled by default.
 
 ## Syntax
 
@@ -35,7 +36,7 @@ forward FROM TO... {
     health_check DURATION
     max_fails INTEGER
     tls CERT KEY CA
-    tls_name NAME
+    tls_servername NAME
 }
 ~~~
 
@@ -48,7 +49,7 @@ forward FROM TO... {
   a backend to be down. If 0, the backend will never be marked as down. Default is 2.
 * `tls` **CERT** **KEY** **CA** define the TLS properties for TLS; if you leave this out the
   system's configuration will be used.
-* `tls-name` **NAME** allows you to set a server name in the TLS configuration; for instance 9.9.9.9
+* `tls_servername` **NAME** allows you to set a server name in the TLS configuration; for instance 9.9.9.9
   needs this to be set to `dns.quad9.net`.
 
 The upstream selection is done via round robin. If the socket for this client isn't known *forward*
@@ -121,7 +122,7 @@ seconds.
 ~~~ corefile
 . {
     forward . tls://9.9.9.9 {
-       tls_name dns.quad9.net
+       tls_servername dns.quad9.net
        health_check 5s
     }
     cache 30

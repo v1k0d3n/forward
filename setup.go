@@ -72,10 +72,10 @@ func parseForward(c *caddy.Controller) (Forward, error) {
 		if len(to) == 0 {
 			return f, c.ArgErr()
 		}
-		// A bit fiddly, but first check if we've go transports and if so add them back in when we create the proxies.
-		trans := make([]int, len(to))
+		// A bit fiddly, but first check if we've got protocols and if so add them back in when we create the proxies.
+		protocols := make([]int, len(to))
 		for i := range to {
-			trans[i], to[i] = transport(to[i])
+			protocols[i], to[i] = protocol(to[i])
 		}
 
 		toHosts, err := dnsutil.ParseHostPortOrFile(to...)
@@ -86,8 +86,8 @@ func parseForward(c *caddy.Controller) (Forward, error) {
 		for i, h := range toHosts {
 			// Double check the port, if e.g. is 53 and the transport is TLS make it 853.
 			// This can be somewhat annoying because you *can't* have TLS on port 53 then.
-			switch trans[i] {
-			case TransportTLS:
+			switch protocols[i] {
+			case TLS:
 				h1, p, err := net.SplitHostPort(h)
 				if err != nil {
 					break
@@ -100,7 +100,7 @@ func parseForward(c *caddy.Controller) (Forward, error) {
 
 			// We can't set tlsConfig here, because we haven't parsed it yet.
 			// We set it below at the end of parseBlock.
-			p := newProxy(h, trans[i])
+			p := newProxy(h)
 			f.proxies = append(f.proxies, p)
 
 		}
@@ -170,7 +170,7 @@ func parseBlock(c *caddy.Controller, f *Forward) error {
 			return err
 		}
 		f.tlsConfig = tlsConfig
-	case "tls_name":
+	case "tls_servername":
 		if !c.NextArg() {
 			return c.ArgErr()
 		}

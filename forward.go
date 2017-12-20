@@ -56,27 +56,35 @@ func (f Forward) ServeDNS(ctx context.Context, w dns.ResponseWriter, r *dns.Msg)
 		start := time.Now()
 
 		proto := state.Proto()
-		conn, err := proxy.Connect(proto)
+		if f.forceTCP {
+			proto = "tcp"
+		}
+		if proxy.host.tlsConfig != nil {
+			proto = "tcp-tls"
+		}
+
+		conn, err := proxy.Dial(proto)
 		if err != nil {
 			log.Printf("[WARNING] Failed to connect with %s to %s: %s", proto, proxy.host, err)
 			continue
 		}
 
-		defer conn.Close()
-
 		if err := conn.WriteMsg(state.Req); err != nil {
 			log.Printf("[WARNING] Failed to write with %s to %s: %s", proto, proxy.host, err)
+			conn.Close() // not giving it back
 			continue
 		}
 
 		ret, err := conn.ReadMsg()
 		if err != nil {
 			log.Printf("[WARNING] Failed to read with %s to %s: %s", proto, proxy.host, err)
-			// kick off hc when happens to often???
+			conn.Close() // not giving it back
 			continue
 		}
 
 		w.WriteMsg(ret)
+
+		proxy.Yield(conn)
 
 		ps := proxy.host.String()
 		fa := familyToString(state.Family())

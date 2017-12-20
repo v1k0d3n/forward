@@ -12,7 +12,6 @@ type host struct {
 	addr   string
 	client *dns.Client
 
-	transport int
 	tlsConfig *tls.Config
 
 	fails uint32
@@ -22,8 +21,8 @@ type host struct {
 
 // newHost returns a new host, the fails are set to 1, i.e.
 // the first healthcheck must succeed before we use this host.
-func newHost(addr string, trans int) *host {
-	return &host{addr: addr, fails: 1, transport: trans}
+func newHost(addr string) *host {
+	return &host{addr: addr, fails: 1}
 }
 
 // SetTLSConfig sets the TLS config for host h.
@@ -38,8 +37,7 @@ func (h *host) SetClient() {
 	c.ReadTimeout = 2 * time.Second
 	c.WriteTimeout = 2 * time.Second
 
-	switch h.transport {
-	case TransportTLS:
+	if h.tlsConfig != nil {
 		c.Net = "tcp-tls"
 		c.TLSConfig = h.tlsConfig
 	}
