@@ -114,8 +114,8 @@ func parseForward(c *caddy.Controller) (Forward, error) {
 			}
 		}
 	}
-	if f.tlsName != "" {
-		f.tlsConfig.ServerName = f.tlsName
+	if f.tlsServerName != "" {
+		f.tlsConfig.ServerName = f.tlsServerName
 	}
 	for i := range f.proxies {
 		// Only set this for proxies that need it
@@ -180,7 +180,7 @@ func parseBlock(c *caddy.Controller, f *Forward) error {
 		if !c.NextArg() {
 			return c.ArgErr()
 		}
-		f.tlsName = c.Val()
+		f.tlsServerName = c.Val()
 	default:
 		return c.Errf("unknown property '%s'", c.Val())
 	}

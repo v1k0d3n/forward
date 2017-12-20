@@ -29,8 +29,8 @@ type Forward struct {
 	forceTCP   bool          // also here for testing
 	hcInterval time.Duration // also here for testing
 
-	tlsConfig *tls.Config
-	tlsName   string
+	tlsConfig     *tls.Config
+	tlsServerName string
 
 	maxfails uint32
 
