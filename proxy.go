@@ -17,7 +17,7 @@ type proxy struct {
 	hcInterval time.Duration
 	forceTCP   bool
 
-	closed bool
+	stop chan bool
 
 	sync.RWMutex
 }
@@ -29,6 +29,7 @@ func newProxy(addr string) *proxy {
 		host:       host,
 		closed:     false,
 		hcInterval: hcDuration,
+		stop:       make(chan bool),
 		Transport:  NewTransport(host),
 	}
 	return p
@@ -37,18 +38,7 @@ func newProxy(addr string) *proxy {
 // SetTLSConfig sets the TLS config lower p.host.
 func (p *proxy) SetTLSConfig(cfg *tls.Config) { p.host.SetTLSConfig(cfg) }
 
-func (p *proxy) Closed() bool {
-	p.RLock()
-	b := p.closed
-	p.RUnlock()
-	return b
-}
-
-func (p *proxy) SetClosed(b bool) {
-	p.Lock()
-	p.closed = b
-	p.Unlock()
-}
+func (p *proxy) Close(b bool) { p.stop <- true }
 
 // Connect connect to the host in p with the configured transport.
 func (p *proxy) Dial(proto string) (*dns.Conn, error) { return p.Transport.Dial(proto) }
@@ -64,9 +54,15 @@ func (p *proxy) healthCheck() {
 	// stop channel
 	p.host.SetClient()
 
-	for !p.Closed() {
-		p.host.Check()
-		time.Sleep(p.hcInterval)
+	p.host.Check()
+	tick := time.NewTicker(p.hcInterval)
+	for {
+		select {
+		case <-tick:
+			p.host.Check()
+		case <-stop:
+			return
+		}
 	}
 }
 

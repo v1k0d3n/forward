@@ -44,6 +44,14 @@ func NewTransport(h *host) *Transport {
 	return t
 }
 
+func (t *Transport) Len() int {
+	l := 0
+	for _, conns := range t.conns {
+		l += len(conns)
+	}
+	return l
+}
+
 func (t *Transport) connManager() {
 
 Wait:
@@ -64,6 +72,7 @@ Wait:
 			}
 
 			t.conns[proto] = t.conns[proto][i:]
+			+SocketGauge.WithLabelValues(t.host.String()).Set(float64(t.Len()))
 
 			go func() {
 				if proto != "tcp-tls" {
@@ -77,6 +86,9 @@ Wait:
 			}()
 
 		case conn := <-t.yield:
+
+			SocketGauge.WithLabelValues(t.host.String()).Set(float64(t.Len() + 1))
+
 			// no proto here, infer from config and conn
 			if _, ok := conn.c.Conn.(*net.UDPConn); ok {
 				t.conns["udp"] = append(t.conns["udp"], &persistConn{conn.c, time.Now()})

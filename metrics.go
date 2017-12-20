@@ -29,6 +29,12 @@ var (
 		Name:      "healthcheck_failure_count_total",
 		Help:      "Counter of the number of failed healtchecks.",
 	}, []string{"to"})
+	SocketGauge = prometheus.NewGaugeVec(prometheus.GaugeOpts{
+		Namespace: plugin.Namespace,
+		Subsystem: "forward",
+		Name:      "socket_count_total",
+		Help:      "Guage of open sockets per upstream.",
+	}, []string{"to"})
 )
 
 // OnStartupMetrics sets up the metrics on startup.
@@ -37,6 +43,7 @@ func OnStartupMetrics() error {
 		prometheus.MustRegister(RequestCount)
 		prometheus.MustRegister(RequestDuration)
 		prometheus.MustRegister(HealthcheckFailureCount)
+		prometheus.MustRegister(SocketGauge)
 	})
 	return nil
 }

@@ -65,6 +65,7 @@ If monitoring is enabled (via the *prometheus* directive) then the following met
 * `coredns_forward_request_duration_seconds{proto, family, to}` - duration per upstream interaction.
 * `coredns_forward_request_count_total{proto, family, to}` - query count per upstream.
 * `coredns_forward_healthcheck_failure_count_total{to}` - number of failed healthchecks per upstream.
+* `coredns_forward_socket_count_total{to}` - number of cached sockets per upstream.
 
 Where `to` is one of the upstream servers (**TO** from the config), `proto` is the protocol used by
 the incoming query ("tcp" or "udp"), and family the transport family ("1" for IPv4, and "2" for
