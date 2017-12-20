@@ -11,7 +11,7 @@ import (
 type proxy struct {
 	host *host
 
-	Transport *Transport
+	transport *transport
 
 	// copied from Forward.
 	hcInterval time.Duration
@@ -29,7 +29,7 @@ func newProxy(addr string) *proxy {
 		host:       host,
 		hcInterval: hcDuration,
 		stop:       make(chan bool),
-		Transport:  NewTransport(host),
+		transport:  newTransport(host),
 	}
 	return p
 }
@@ -40,10 +40,10 @@ func (p *proxy) SetTLSConfig(cfg *tls.Config) { p.host.SetTLSConfig(cfg) }
 func (p *proxy) close() { p.stop <- true }
 
 // Connect connect to the host in p with the configured transport.
-func (p *proxy) Dial(proto string) (*dns.Conn, error) { return p.Transport.Dial(proto) }
+func (p *proxy) Dial(proto string) (*dns.Conn, error) { return p.transport.Dial(proto) }
 
 // Yield returns the connection to the pool.
-func (p *proxy) Yield(c *dns.Conn) { p.Transport.Yield(c) }
+func (p *proxy) Yield(c *dns.Conn) { p.transport.Yield(c) }
 
 // Down returns if this proxy is up or down.
 func (p *proxy) Down(maxfails uint32) bool { return p.host.down(maxfails) }

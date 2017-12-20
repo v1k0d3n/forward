@@ -19,8 +19,8 @@ type connErr struct {
 	err error
 }
 
-//map string connectMethodKey (transport one??)
-type Transport struct {
+// transport hold the persistent cache.
+type transport struct {
 	conns map[string][]*persistConn //  Buckets for udp, tcp and tcp-tls
 	host  *host
 
@@ -31,8 +31,8 @@ type Transport struct {
 	stop chan bool
 }
 
-func NewTransport(h *host) *Transport {
-	t := &Transport{
+func newTransport(h *host) *transport {
+	t := &transport{
 		conns: make(map[string][]*persistConn),
 		host:  h,
 		dial:  make(chan string),
@@ -44,7 +44,7 @@ func NewTransport(h *host) *Transport {
 	return t
 }
 
-func (t *Transport) Len() int {
+func (t *transport) Len() int {
 	l := 0
 	for _, conns := range t.conns {
 		l += len(conns)
@@ -52,7 +52,7 @@ func (t *Transport) Len() int {
 	return l
 }
 
-func (t *Transport) connManager() {
+func (t *transport) connManager() {
 
 Wait:
 	for {
@@ -108,15 +108,15 @@ Wait:
 	}
 }
 
-func (t *Transport) Dial(proto string) (*dns.Conn, error) {
+func (t *transport) Dial(proto string) (*dns.Conn, error) {
 	t.dial <- proto
 	c := <-t.ret
 	return c.c, c.err
 }
 
-func (t *Transport) Yield(c *dns.Conn) {
+func (t *transport) Yield(c *dns.Conn) {
 	t.yield <- connErr{c, nil}
 }
 
 // Stop stops the transports.
-func (t *Transport) Stop() { t.stop <- true }
+func (t *transport) Stop() { t.stop <- true }

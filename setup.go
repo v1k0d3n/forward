@@ -62,6 +62,8 @@ func (f *Forward) OnShutdown() error {
 func parseForward(c *caddy.Controller) (Forward, error) {
 	f := Forward{maxfails: 2, tlsConfig: new(tls.Config)}
 
+	protocols := []int{}
+
 	for c.Next() {
 		if !c.Args(&f.from) {
 			return f, c.ArgErr()
@@ -72,8 +74,9 @@ func parseForward(c *caddy.Controller) (Forward, error) {
 		if len(to) == 0 {
 			return f, c.ArgErr()
 		}
+
 		// A bit fiddly, but first check if we've got protocols and if so add them back in when we create the proxies.
-		protocols := make([]int, len(to))
+		protocols = make([]int, len(to))
 		for i := range to {
 			protocols[i], to[i] = protocol(to[i])
 		}
@@ -115,7 +118,10 @@ func parseForward(c *caddy.Controller) (Forward, error) {
 		f.tlsConfig.ServerName = f.tlsName
 	}
 	for i := range f.proxies {
-		f.proxies[i].SetTLSConfig(f.tlsConfig)
+		// Only set this for proxies that need it
+		if protocols[i] == TLS {
+			f.proxies[i].SetTLSConfig(f.tlsConfig)
+		}
 	}
 	return f, nil
 }

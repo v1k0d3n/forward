@@ -48,7 +48,7 @@ func (f Forward) ServeDNS(ctx context.Context, w dns.ResponseWriter, r *dns.Msg)
 		return plugin.NextOrFailure(f.Name(), f.Next, ctx, w, r)
 	}
 
-	for _, proxy := range f.Select(w) {
+	for _, proxy := range f.list() {
 		if proxy.Down(f.maxfails) {
 			continue
 		}
@@ -120,9 +120,9 @@ func (f Forward) isAllowedDomain(name string) bool {
 	return true
 }
 
-// Select returns a randomized set of proxies to be used for this client. If the client was
+// list returns a randomized set of proxies to be used for this client. If the client was
 // know to any of the proxies it will be put first.
-func (f Forward) Select(w dns.ResponseWriter) []*proxy {
+func (f Forward) list() []*proxy {
 	switch len(f.proxies) {
 	case 1:
 		return f.proxies
