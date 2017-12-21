@@ -60,7 +60,7 @@ func (f *Forward) OnShutdown() error {
 }
 
 func parseForward(c *caddy.Controller) (Forward, error) {
-	f := Forward{maxfails: 2, tlsConfig: new(tls.Config)}
+	f := Forward{maxfails: 2, tlsConfig: new(tls.Config), expire: 10 * time.Second}
 
 	protocols := []int{}
 
@@ -114,14 +114,16 @@ func parseForward(c *caddy.Controller) (Forward, error) {
 			}
 		}
 	}
+
 	if f.tlsServerName != "" {
 		f.tlsConfig.ServerName = f.tlsServerName
 	}
 	for i := range f.proxies {
-		// Only set this for proxies that need it
+		// Only set this for proxies that need it.
 		if protocols[i] == TLS {
 			f.proxies[i].SetTLSConfig(f.tlsConfig)
 		}
+		f.proxies[i].SetExpire(f.expire)
 	}
 	return f, nil
 }
@@ -181,6 +183,16 @@ func parseBlock(c *caddy.Controller, f *Forward) error {
 			return c.ArgErr()
 		}
 		f.tlsServerName = c.Val()
+	case "expire":
+		if !c.NextArg() {
+			return c.ArgErr()
+		}
+		dur, err := time.ParseDuration(c.Val())
+		if err != nil {
+			return err
+		}
+		f.expire = dur
+
 	default:
 		return c.Errf("unknown property '%s'", c.Val())
 	}

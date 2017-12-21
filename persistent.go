@@ -7,8 +7,6 @@ import (
 	"github.com/miekg/dns"
 )
 
-var collect = 10 * time.Second
-
 type persistConn struct {
 	c    *dns.Conn
 	used time.Time
@@ -62,7 +60,7 @@ Wait:
 			i := 0
 			for i = 0; i < len(t.conns[proto]); i++ {
 				pc := t.conns[proto][i]
-				if time.Since(pc.used) < collect {
+				if time.Since(pc.used) < t.host.expire {
 					t.conns[proto] = t.conns[proto][i+1:]
 					t.ret <- connErr{pc.c, nil}
 					continue Wait
@@ -72,7 +70,7 @@ Wait:
 			}
 
 			t.conns[proto] = t.conns[proto][i:]
-			SocketGauge.WithLabelValues(t.host.String()).Set(float64(t.Len()))
+			SocketGauge.WithLabelValues(t.host.addr).Set(float64(t.Len()))
 
 			go func() {
 				if proto != "tcp-tls" {
@@ -87,7 +85,7 @@ Wait:
 
 		case conn := <-t.yield:
 
-			SocketGauge.WithLabelValues(t.host.String()).Set(float64(t.Len() + 1))
+			SocketGauge.WithLabelValues(t.host.addr).Set(float64(t.Len() + 1))
 
 			// no proto here, infer from config and conn
 			if _, ok := conn.c.Conn.(*net.UDPConn); ok {

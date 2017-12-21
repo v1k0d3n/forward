@@ -34,8 +34,11 @@ func newProxy(addr string) *proxy {
 	return p
 }
 
-// SetTLSConfig sets the TLS config lower p.host.
-func (p *proxy) SetTLSConfig(cfg *tls.Config) { p.host.SetTLSConfig(cfg) }
+// SetTLSConfig sets the TLS config in the lower p.host.
+func (p *proxy) SetTLSConfig(cfg *tls.Config) { p.host.tlsConfig = cfg }
+
+// SetExpire sets the expire duration in the lower p.host.
+func (p *proxy) SetExpire(expire time.Duration) { p.host.expire = expire }
 
 func (p *proxy) close() { p.stop <- true }
 

@@ -24,7 +24,8 @@ func (h *host) Check() {
 	err := h.send()
 	if err != nil {
 		log.Printf("[INFO] healtheck of %s failed with %s", h.addr, err)
-		HealthcheckFailureCount.WithLabelValues(h.String()).Add(1)
+
+		HealthcheckFailureCount.WithLabelValues(h.addr).Add(1)
 
 		atomic.AddUint32(&h.fails, 1)
 	} else {

@@ -26,13 +26,13 @@ type Forward struct {
 	from    string
 	ignored []string
 
-	forceTCP   bool          // also here for testing
-	hcInterval time.Duration // also here for testing
-
 	tlsConfig     *tls.Config
 	tlsServerName string
+	maxfails      uint32
+	expire        time.Duration
 
-	maxfails uint32
+	forceTCP   bool          // also here for testing
+	hcInterval time.Duration // also here for testing
 
 	Next plugin.Handler
 }
@@ -65,19 +65,19 @@ func (f Forward) ServeDNS(ctx context.Context, w dns.ResponseWriter, r *dns.Msg)
 
 		conn, err := proxy.Dial(proto)
 		if err != nil {
-			log.Printf("[WARNING] Failed to connect with %s to %s: %s", proto, proxy.host, err)
+			log.Printf("[WARNING] Failed to connect with %s to %s: %s", proto, proxy.host.addr, err)
 			continue
 		}
 
 		if err := conn.WriteMsg(state.Req); err != nil {
-			log.Printf("[WARNING] Failed to write with %s to %s: %s", proto, proxy.host, err)
+			log.Printf("[WARNING] Failed to write with %s to %s: %s", proto, proxy.host.addr, err)
 			conn.Close() // not giving it back
 			continue
 		}
 
 		ret, err := conn.ReadMsg()
 		if err != nil {
-			log.Printf("[WARNING] Failed to read with %s to %s: %s", proto, proxy.host, err)
+			log.Printf("[WARNING] Failed to read with %s to %s: %s", proto, proxy.host.addr, err)
 			conn.Close() // not giving it back
 			continue
 		}
@@ -86,7 +86,7 @@ func (f Forward) ServeDNS(ctx context.Context, w dns.ResponseWriter, r *dns.Msg)
 
 		proxy.Yield(conn)
 
-		ps := proxy.host.String()
+		ps := proxy.host.addr
 		fa := familyToString(state.Family())
 		RequestCount.WithLabelValues(proto, fa, ps).Add(1)
 		RequestDuration.WithLabelValues(proto, fa, ps).Observe(time.Since(start).Seconds())

@@ -13,6 +13,7 @@ type host struct {
 	client *dns.Client
 
 	tlsConfig *tls.Config
+	expire    time.Duration
 
 	fails uint32
 	sync.RWMutex
@@ -24,11 +25,6 @@ type host struct {
 func newHost(addr string) *host {
 	return &host{addr: addr, fails: 1}
 }
-
-// SetTLSConfig sets the TLS config for host h.
-func (h *host) SetTLSConfig(cfg *tls.Config) { h.tlsConfig = cfg }
-
-func (h *host) String() string { return h.addr }
 
 // setClient sets and configures the dns.Client in host.
 func (h *host) SetClient() {

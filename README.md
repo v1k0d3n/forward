@@ -34,6 +34,7 @@ forward FROM TO... {
     except IGNORED_NAMES...
     force_tcp
     health_check DURATION
+    expire DURATION
     max_fails INTEGER
     tls CERT KEY CA
     tls_servername NAME
@@ -47,6 +48,7 @@ forward FROM TO... {
 * `health_checks`, use a different **DURATION** for health checking, the default duration is 500ms.
 * `max_fails` is the number of subsequent failed health checks that are needed before considering
   a backend to be down. If 0, the backend will never be marked as down. Default is 2.
+* `expire` **DURATION**, expire connections after this time, the default is 10s.
 * `tls` **CERT** **KEY** **CA** define the TLS properties for TLS; if you leave this out the
   system's configuration will be used.
 * `tls_servername` **NAME** allows you to set a server name in the TLS configuration; for instance 9.9.9.9
