@@ -64,8 +64,9 @@ Also note the TLS config is "global" for the whole forwarding proxy if you need 
 
 If monitoring is enabled (via the *prometheus* directive) then the following metric are exported:
 
-* `coredns_forward_request_duration_seconds{proto, family, to}` - duration per upstream interaction.
-* `coredns_forward_request_count_total{proto, family, to}` - query count per upstream.
+* `coredns_forward_request_duration_seconds{to}` - duration per upstream interaction.
+* `coredns_forward_request_count_total{to}` - query count per upstream.
+* `coredns_forward_response_rcode_total{to, rcode}` - count of RCODEs per upstream.
 * `coredns_forward_healthcheck_failure_count_total{to}` - number of failed healthchecks per upstream.
 * `coredns_forward_socket_count_total{to}` - number of cached sockets per upstream.
 

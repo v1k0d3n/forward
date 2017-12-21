@@ -15,14 +15,20 @@ var (
 		Subsystem: "forward",
 		Name:      "request_count_total",
 		Help:      "Counter of requests made per protocol, family and upstream.",
-	}, []string{"proto", "family", "to"})
+	}, []string{"to"})
+	RcodeCount = prometheus.NewCounterVec(prometheus.CounterOpts{
+		Namespace: plugin.Namespace,
+		Subsystem: "forward",
+		Name:      "response_rcode_count_total",
+		Help:      "Counter of requests made per protocol, family and upstream.",
+	}, []string{"rcode", "to"})
 	RequestDuration = prometheus.NewHistogramVec(prometheus.HistogramOpts{
 		Namespace: plugin.Namespace,
 		Subsystem: "forward",
 		Name:      "request_duration_seconds",
 		Buckets:   plugin.TimeBuckets,
 		Help:      "Histogram of the time each request took.",
-	}, []string{"proto", "family", "to"})
+	}, []string{"to"})
 	HealthcheckFailureCount = prometheus.NewCounterVec(prometheus.CounterOpts{
 		Namespace: plugin.Namespace,
 		Subsystem: "forward",

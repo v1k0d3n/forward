@@ -9,6 +9,7 @@ import (
 	"errors"
 	"log"
 	"math/rand"
+	"strconv"
 	"time"
 
 	"github.com/coredns/coredns/plugin"
@@ -86,10 +87,14 @@ func (f Forward) ServeDNS(ctx context.Context, w dns.ResponseWriter, r *dns.Msg)
 
 		proxy.Yield(conn)
 
-		ps := proxy.host.addr
-		fa := familyToString(state.Family())
-		RequestCount.WithLabelValues(proto, fa, ps).Add(1)
-		RequestDuration.WithLabelValues(proto, fa, ps).Observe(time.Since(start).Seconds())
+		rc, ok := dns.RcodeToString[ret.Rcode]
+		if !ok {
+			rc = strconv.Itoa(ret.Rcode)
+		}
+
+		RequestCount.WithLabelValues(proxy.host.addr).Add(1)
+		RcodeCount.WithLabelValues(rc, proxy.host.addr).Add(1)
+		RequestDuration.WithLabelValues(proxy.host.addr).Observe(time.Since(start).Seconds())
 
 		return 0, nil
 	}
