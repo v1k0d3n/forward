@@ -33,7 +33,6 @@ func setup(c *caddy.Controller) error {
 	})
 
 	c.OnStartup(func() error {
-		OnStartupMetrics()
 		return f.OnStartup()
 	})
 	c.OnShutdown(func() error {

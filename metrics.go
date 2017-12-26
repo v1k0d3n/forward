@@ -1,8 +1,6 @@
 package forward
 
 import (
-	"sync"
-
 	"github.com/coredns/coredns/plugin"
 
 	"github.com/prometheus/client_golang/prometheus"
@@ -14,13 +12,13 @@ var (
 		Namespace: plugin.Namespace,
 		Subsystem: "forward",
 		Name:      "request_count_total",
-		Help:      "Counter of requests made per protocol, family and upstream.",
+		Help:      "Counter of requests made per upstream.",
 	}, []string{"to"})
 	RcodeCount = prometheus.NewCounterVec(prometheus.CounterOpts{
 		Namespace: plugin.Namespace,
 		Subsystem: "forward",
 		Name:      "response_rcode_count_total",
-		Help:      "Counter of requests made per protocol, family and upstream.",
+		Help:      "Counter of requests made per upstream.",
 	}, []string{"rcode", "to"})
 	RequestDuration = prometheus.NewHistogramVec(prometheus.HistogramOpts{
 		Namespace: plugin.Namespace,
@@ -43,27 +41,10 @@ var (
 	}, []string{"to"})
 )
 
-// OnStartupMetrics sets up the metrics on startup.
-func OnStartupMetrics() error {
-	metricsOnce.Do(func() {
-		prometheus.MustRegister(RequestCount)
-		prometheus.MustRegister(RequestDuration)
-		prometheus.MustRegister(HealthcheckFailureCount)
-		prometheus.MustRegister(SocketGauge)
-	})
-	return nil
+func init() {
+	prometheus.MustRegister(RequestCount)
+	prometheus.MustRegister(RcodeCount)
+	prometheus.MustRegister(RequestDuration)
+	prometheus.MustRegister(HealthcheckFailureCount)
+	prometheus.MustRegister(SocketGauge)
 }
-
-// familyToString returns the string form of either 1, or 2. Returns
-// empty string is not a known family
-func familyToString(f int) string {
-	if f == 1 {
-		return "1"
-	}
-	if f == 2 {
-		return "2"
-	}
-	return ""
-}
-
-var metricsOnce sync.Once
