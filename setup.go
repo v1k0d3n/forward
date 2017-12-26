@@ -62,7 +62,7 @@ func (f *Forward) OnShutdown() error {
 func parseForward(c *caddy.Controller) (Forward, error) {
 	f := Forward{maxfails: 2, tlsConfig: new(tls.Config), expire: 10 * time.Second}
 
-	protocols := []int{}
+	protocols := map[int]int{}
 
 	for c.Next() {
 		if !c.Args(&f.from) {
@@ -76,11 +76,13 @@ func parseForward(c *caddy.Controller) (Forward, error) {
 		}
 
 		// A bit fiddly, but first check if we've got protocols and if so add them back in when we create the proxies.
-		protocols = make([]int, len(to))
+		protocols = make(map[int]int)
 		for i := range to {
 			protocols[i], to[i] = protocol(to[i])
 		}
 
+		// If parseHostPortOrFile expands a file with a lot of nameserver our accounting in protocols doesn't make
+		// any sense anymore... For now: lets don't care.
 		toHosts, err := dnsutil.ParseHostPortOrFile(to...)
 		if err != nil {
 			return f, err
